@@ -13,9 +13,10 @@
 # - Flatpak instead of Snap
 # - Vivaldi browser + Ghostty terminal
 # - GNOME extensions (Pop Shell, Blur My Shell, etc.)
-# - Fabric installation via Go
+# - Fabric installation via Go with completions
 # - Media codecs for video consumption
 # - Professional applications (Proton Mail/Pass, Draw.io, Cohesion)
+# - Centralized configuration management
 #==============================================================================
 
 # Exit immediately if a command exits with a non-zero status.
@@ -24,6 +25,7 @@ set -e
 # --- Configuration ---
 USERNAME=$(logname)
 USER_HOME=$(eval echo ~$USERNAME)
+WORK_DIR="$USER_HOME/setup_temp"
 
 # Colors for output
 RED='\033[0;31m'
@@ -53,6 +55,10 @@ if [ "$(id -u)" -ne 0 ]; then
   print_error "This script must be run as root. Please use sudo."
   exit 1
 fi
+
+# Create working directory
+print_status "Creating setup working directory..."
+sudo -u $USERNAME mkdir -p $WORK_DIR
 
 print_status "Removing unnecessary GNOME packages for a lean system..."
 apt purge -y \
@@ -137,8 +143,23 @@ apt install -y \
     gstreamer1.0-plugins-bad \
     gstreamer1.0-plugins-ugly \
     gstreamer1.0-libav \
-    gstreamer1.0-vaapi \
-    eza
+    gstreamer1.0-vaapi
+
+# Install eza (modern replacement for ls)
+print_status "Installing eza (modern ls replacement)..."
+cd $WORK_DIR
+wget -c https://github.com/eza-community/eza/releases/latest/download/eza_x86_64-unknown-linux-gnu.tar.gz -O - | tar xz
+chmod +x eza
+chown root:root eza
+mv eza /usr/local/bin/eza
+
+# Configure fastfetch with your custom config
+print_status "Configuring fastfetch with custom configuration..."
+sudo -u $USERNAME mkdir -p $USER_HOME/.config/fastfetch
+sudo -u $USERNAME wget -O $USER_HOME/.config/fastfetch/config.jsonc https://raw.githubusercontent.com/tonybeyond/debiantrixie/main/config.jsonc
+
+# Fix ownership of fastfetch config
+chown -R $USERNAME:$USERNAME $USER_HOME/.config/fastfetch
 
 echo "### Core utilities and modern CLI tools installed. ###"
 echo
@@ -165,39 +186,7 @@ sudo -u $USERNAME git clone https://github.com/zsh-users/zsh-syntax-highlighting
 sudo -u $USERNAME git clone --depth 1 -- https://github.com/marlonrichert/zsh-autocomplete.git ${USER_HOME}/.oh-my-zsh/custom/plugins/zsh-autocomplete
 
 print_status "Downloading and applying custom .zshrc configuration..."
-sudo -u $USERNAME wget -O $USER_HOME/.zshrc https://raw.githubusercontent.com/tonybeyond/ubuntu2404/main/zsh/.zshrc
-
-# Add plugins, Go path, and modern aliases to .zshrc
-cat >> $USER_HOME/.zshrc << EOF
-
-# Enhanced plugin configuration
-plugins=(git zsh-autosuggestions zsh-syntax-highlighting zsh-autocomplete)
-
-# Go environment variables
-export GOPATH=\/home/$USERNAME/go
-export PATH=\$PATH:\$GOPATH/bin:/usr/local/go/bin
-
-# FZF configuration
-if [ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]; then
-    source /usr/share/doc/fzf/examples/key-bindings.zsh
-fi
-if [ -f /usr/share/doc/fzf/examples/completion.zsh ]; then
-    source /usr/share/doc/fzf/examples/completion.zsh
-fi
-
-# FZF options for better experience
-export FZF_DEFAULT_OPTS='--layout=reverse --height=80% --preview "cat {} || tree -C {} | head -100"'
-
-# Modern command aliases
-alias ls='eza --icons'
-alias ll='eza -l --icons'
-alias la='eza -la --icons'
-alias tree='eza --tree --icons'
-alias cat='batcat'
-alias find='fd'
-alias neofetch='fastfetch' 
-alias grep='rg'
-EOF
+sudo -u $USERNAME wget -O $USER_HOME/.zshrc https://raw.githubusercontent.com/tonybeyond/debiantrixie/main/.zshrc
 
 # Fix ownership of the .zshrc file
 chown $USERNAME:$USERNAME $USER_HOME/.zshrc
@@ -218,24 +207,25 @@ apt update && apt install -y vivaldi-stable
 
 # --- Ghostty Terminal Installation ---
 print_status "Installing Ghostty Terminal..."
-cd /home/$USERNAME/Downloads
+cd $WORK_DIR
 ARCH="$(dpkg --print-architecture)"
 curl -LO https://download.opensuse.org/repositories/home:/clayrisser:/sid/Debian_Unstable/$ARCH/ghostty_1.1.3-2_$ARCH.deb
-apt install -y ./ghostty_1.1.3-2_$ARCH.deb
 
-# Create Ghostty config directory and copy configuration
+# Install with force-overwrite to handle terminfo conflicts
+print_status "Installing Ghostty (handling package conflicts)..."
+dpkg -i --force-overwrite ./ghostty_1.1.3-2_$ARCH.deb || true
+apt-get install -f -y
+
+# Create Ghostty config directory and copy your configuration
 print_status "Setting up Ghostty configuration..."
 sudo -u $USERNAME mkdir -p $USER_HOME/.config/ghostty
-sudo -u $USERNAME wget -O $USER_HOME/.config/ghostty/config https://raw.githubusercontent.com/tonybeyond/ubuntu2404/refs/heads/main/ghostty/.config/ghostty/config
+sudo -u $USERNAME wget -O $USER_HOME/.config/ghostty/config https://raw.githubusercontent.com/tonybeyond/debiantrixie/main/config
 
 # Fix ownership of config file
 chown -R $USERNAME:$USERNAME $USER_HOME/.config/ghostty
 
-cd ~
-
 echo "### Vivaldi and Ghostty installed with custom configuration. ###"
 echo
-
 
 #==============================================================================
 # SECTION 5: FLATPAK & FLATHUB SETUP
@@ -248,7 +238,7 @@ su - $USERNAME << 'EOF'
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
     
     # Install basic Flatpak applications
-    flatpak install -y flathub com.github.tchx84.Flatseal org.videolan.VLC
+    flatpak install -y flathub org.mozilla.firefox com.github.tchx84.Flatseal org.videolan.VLC
     
     # Install additional professional applications
     flatpak install -y flathub me.proton.Pass me.proton.Mail com.jgraph.drawio.desktop io.github.brunofin.Cohesion
@@ -265,58 +255,24 @@ echo "### Flatpak setup complete with all applications installed. ###"
 echo
 
 #==============================================================================
-# SECTION 8: FABRIC (BY DANIEL MIESSLER) INSTALLATION
+# SECTION 6: GNOME SHELL EXTENSIONS
 #==============================================================================
-echo "### SECTION 8: INSTALLING FABRIC ###"
-
-print_status "Installing Fabric via the Go method..."
-
-# Ensure we're in the user's home directory and set proper environment
-cd $USER_HOME
-
-# Install Fabric with proper user context and environment
-sudo -u $USERNAME bash -c "
-    cd $USER_HOME
-    export GOPATH=$USER_HOME/go
-    export PATH=\$PATH:\$GOPATH/bin:/usr/local/go/bin
-    export HOME=$USER_HOME
-    go install github.com/danielmiessler/fabric/cmd/fabric@latest
-"
-
-# Verify installation
-if [ -f "$USER_HOME/go/bin/fabric" ]; then
-    print_status "Fabric installed successfully at $USER_HOME/go/bin/fabric"
-else
-    print_warning "Fabric installation may have failed. Please check manually."
-fi
-
-echo "### Fabric has been installed. ###"
-echo
-
-
-#==============================================================================
-# SECTION 9: FINAL OPTIMIZATIONS & CLEANUP
-#==============================================================================
-echo "### SECTION 9: FINAL OPTIMIZATIONS & CLEANUP ###"
-
-print_status "Cleaning up APT cache and removing orphaned packages..."
-apt autoremove -y
-apt autoclean
-
-print_status "Setting up system optimizations..."
-# Disable unnecessary services for better performance
-systemctl disable cups.service 2>/dev/null || true
-
-echo "### System optimizations completed. ###"
-echo
-
-#==============================================================================
-# SECTION 10: GNOME SHELL EXTENSIONS
-#==============================================================================
-echo "### SECTION 10: INSTALLING GNOME SHELL EXTENSIONS ###"
+echo "### SECTION 6: INSTALLING GNOME SHELL EXTENSIONS ###"
 
 print_status "Installing base packages for GNOME extensions..."
 apt install -y gnome-shell-extensions gnome-shell-extension-manager gnome-shell-extension-prefs
+
+# --- Pop Shell ---
+print_status "Installing Pop Shell Tiling Extension in user context..."
+su - $USERNAME << 'EOF'
+    cd ~/setup_temp
+    git clone https://github.com/pop-os/shell.git
+    cd shell
+    git checkout master_noble
+    make local-install
+    cd ~
+    rm -rf ~/setup_temp/shell
+EOF
 
 # --- Additional Extensions from APT where available ---
 print_status "Installing additional GNOME extensions from repositories..."
@@ -332,30 +288,85 @@ if apt-cache show gnome-shell-extension-blur-my-shell >/dev/null 2>&1; then
 else
     print_status "Installing Blur My Shell extension manually in user context..."
     su - $USERNAME << 'EOF'
-        cd /home/$USERNAME/Downloads
+        cd ~/setup_temp
         git clone https://github.com/aunetx/blur-my-shell.git
         cd blur-my-shell
         make install
         cd ~
-        rm -rf /home/$USERNAME/Downloads/blur-my-shell
+        rm -rf ~/setup_temp/blur-my-shell
 EOF
 fi
-
-# --- Pop Shell ---
-print_status "Installing Pop Shell Tiling Extension in user context..."
-su - $USERNAME << 'EOF'
-    cd /home/$USERNAME/Downloads
-    git clone https://github.com/pop-os/shell.git
-    cd shell
-    git checkout master_noble
-    make local-install
-    cd ~
-    rm -rf /home/$USERNAME/Downloads/shell
-EOF
 
 print_warning "Please enable your desired extensions using the 'Extension Manager' application after reboot."
 
 echo "### GNOME Shell extensions installed. ###"
+echo
+
+#==============================================================================
+# SECTION 7: FABRIC (BY DANIEL MIESSLER) INSTALLATION
+#==============================================================================
+echo "### SECTION 7: INSTALLING FABRIC WITH COMPLETIONS ###"
+
+print_status "Installing Fabric via the Go method with completions..."
+
+# Install Fabric and setup completions in user context
+su - $USERNAME << 'EOF'
+    cd ~/setup_temp
+    
+    # Install Fabric
+    export GOPATH=$HOME/go
+    export PATH=$PATH:$GOPATH/bin:/usr/local/go/bin
+    export HOME=$HOME
+    go install github.com/danielmiessler/fabric/cmd/fabric@latest
+    
+    # Clone fabric repo for completions
+    git clone https://github.com/danielmiessler/fabric.git
+    cd fabric
+    
+    # Setup zsh completions
+    mkdir -p ~/.zsh/completions
+    cp completions/_fabric ~/.zsh/completions/
+    
+    # Add completion to fpath in zshrc if not already present
+    if ! grep -q "fpath=(~/.zsh/completions \$fpath)" ~/.zshrc; then
+        echo "" >> ~/.zshrc
+        echo "# Fabric completion" >> ~/.zshrc
+        echo "fpath=(~/.zsh/completions \$fpath)" >> ~/.zshrc
+        echo "autoload -U compinit && compinit" >> ~/.zshrc
+    fi
+    
+    cd ~
+    rm -rf ~/setup_temp/fabric
+EOF
+
+# Verify installation
+if [ -f "$USER_HOME/go/bin/fabric" ]; then
+    print_status "Fabric installed successfully with completions"
+else
+    print_warning "Fabric installation may have failed. Please check manually."
+fi
+
+echo "### Fabric has been installed with zsh completions. ###"
+echo
+
+#==============================================================================
+# SECTION 8: FINAL OPTIMIZATIONS & CLEANUP
+#==============================================================================
+echo "### SECTION 8: FINAL OPTIMIZATIONS & CLEANUP ###"
+
+print_status "Cleaning up APT cache and removing orphaned packages..."
+apt autoremove -y
+apt autoclean
+
+print_status "Cleaning up setup working directory..."
+sudo -u $USERNAME rm -rf $WORK_DIR
+
+print_status "Setting up system optimizations..."
+# Disable unnecessary services for better performance
+systemctl disable bluetooth.service 2>/dev/null || true
+systemctl disable cups.service 2>/dev/null || true
+
+echo "### System optimizations completed. ###"
 echo
 
 #==============================================================================
@@ -378,8 +389,9 @@ echo "✓ Blur My Shell extension"
 echo "✓ User Theme extension"
 echo "✓ Oh My Zsh with plugins: autosuggestions, syntax-highlighting, autocomplete"
 echo "✓ Modern CLI tools: fzf, eza, bat, ripgrep, fd-find"
-echo "✓ Ghostty terminal"
-echo "✓ Fabric by Daniel Miessler"
+echo "✓ FastFetch with custom Bazzite-style configuration"
+echo "✓ Ghostty terminal with custom configuration"
+echo "✓ Fabric by Daniel Miessler with zsh completions"
 echo "✓ Media codecs for YouTube and video consumption"
 echo "✓ Development tools (Node.js, Python, Go)"
 echo "✓ Professional applications:"
@@ -388,16 +400,19 @@ echo "  • Proton Mail (secure email client)"
 echo "  • Draw.io Desktop (diagram creation)"
 echo "  • Cohesion (Git client)"
 echo "✓ System optimizations for performance"
+echo "✓ All configurations managed from centralized repository"
 echo
 echo "-----------------------------------------------------------------"
 echo "IMPORTANT: A reboot is required for all changes to take full effect."
 echo "After rebooting, please do the following:"
 echo "1. Open the 'Extension Manager' app to enable and configure extensions"
 echo "2. Log into Zsh (should be default) - plugins will be automatically loaded"
-echo "3. Test fzf with Ctrl+R for fuzzy command history search"
-echo "4. Run 'fabric --setup' to configure Fabric"
-echo "5. Try modern aliases: 'ls' (eza), 'll' (eza -l), 'cat' (bat)"
-echo "6. Configure Proton Pass and Proton Mail with your credentials"
+echo "3. Test fastfetch with your custom configuration"
+echo "4. Test fzf with Ctrl+R for fuzzy command history search"
+echo "5. Run 'fabric --setup' to configure Fabric"
+echo "6. Test fabric completion with 'fabric <TAB>'"
+echo "7. Try modern aliases: 'ls' (eza), 'll' (eza -l), 'cat' (bat)"
+echo "8. Configure Proton Pass and Proton Mail with your credentials"
 echo "-----------------------------------------------------------------"
 echo
 read -p "Reboot now? (y/n): " REBOOT_CHOICE
