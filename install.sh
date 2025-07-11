@@ -219,7 +219,7 @@ apt update && apt install -y vivaldi-stable
 
 # --- Ghostty Terminal Installation ---
 print_status "Installing Ghostty Terminal..."
-cd /tmp
+cd $HOME/Downloads
 ARCH="$(dpkg --print-architecture)"
 curl -LO https://download.opensuse.org/repositories/home:/clayrisser:/sid/Debian_Unstable/$ARCH/ghostty_1.1.3-2_$ARCH.deb
 apt install -y ./ghostty_1.1.3-2_$ARCH.deb
@@ -249,7 +249,7 @@ su - $USERNAME << 'EOF'
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
     
     # Install basic Flatpak applications
-    flatpak install -y flathub org.mozilla.firefox com.github.tchx84.Flatseal org.videolan.VLC
+    flatpak install -y flathub com.github.tchx84.Flatseal org.videolan.VLC
     
     # Install additional professional applications
     flatpak install -y flathub me.proton.Pass me.proton.Mail com.jgraph.drawio.desktop io.github.brunofin.Cohesion
@@ -333,25 +333,25 @@ if apt-cache show gnome-shell-extension-blur-my-shell >/dev/null 2>&1; then
 else
     print_status "Installing Blur My Shell extension manually in user context..."
     su - $USERNAME << 'EOF'
-        cd /tmp
+        cd $HOME/Downloads
         git clone https://github.com/aunetx/blur-my-shell.git
         cd blur-my-shell
         make install
         cd ~
-        rm -rf /tmp/blur-my-shell
+        rm -rf $HOME/Downloads/blur-my-shell
 EOF
 fi
 
 # --- Pop Shell ---
 print_status "Installing Pop Shell Tiling Extension in user context..."
 su - $USERNAME << 'EOF'
-    cd /tmp
+    cd $HOME/Downloads
     git clone https://github.com/pop-os/shell.git
     cd shell
     git checkout master_noble
     make local-install
     cd ~
-    rm -rf /tmp/shell
+    rm -rf $HOME/Downloads/shell
 EOF
 
 print_warning "Please enable your desired extensions using the 'Extension Manager' application after reboot."
