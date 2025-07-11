@@ -175,7 +175,7 @@ cat >> $USER_HOME/.zshrc << EOF
 plugins=(git zsh-autosuggestions zsh-syntax-highlighting zsh-autocomplete)
 
 # Go environment variables
-export GOPATH=\$HOME/go
+export GOPATH=\/home/$USERNAME/go
 export PATH=\$PATH:\$GOPATH/bin:/usr/local/go/bin
 
 # FZF configuration
@@ -219,7 +219,7 @@ apt update && apt install -y vivaldi-stable
 
 # --- Ghostty Terminal Installation ---
 print_status "Installing Ghostty Terminal..."
-cd $HOME/Downloads
+cd /home/$USERNAME/Downloads
 ARCH="$(dpkg --print-architecture)"
 curl -LO https://download.opensuse.org/repositories/home:/clayrisser:/sid/Debian_Unstable/$ARCH/ghostty_1.1.3-2_$ARCH.deb
 apt install -y ./ghostty_1.1.3-2_$ARCH.deb
@@ -333,25 +333,25 @@ if apt-cache show gnome-shell-extension-blur-my-shell >/dev/null 2>&1; then
 else
     print_status "Installing Blur My Shell extension manually in user context..."
     su - $USERNAME << 'EOF'
-        cd $HOME/Downloads
+        cd /home/$USERNAME/Downloads
         git clone https://github.com/aunetx/blur-my-shell.git
         cd blur-my-shell
         make install
         cd ~
-        rm -rf $HOME/Downloads/blur-my-shell
+        rm -rf /home/$USERNAME/Downloads/blur-my-shell
 EOF
 fi
 
 # --- Pop Shell ---
 print_status "Installing Pop Shell Tiling Extension in user context..."
 su - $USERNAME << 'EOF'
-    cd $HOME/Downloads
+    cd /home/$USERNAME/Downloads
     git clone https://github.com/pop-os/shell.git
     cd shell
     git checkout master_noble
     make local-install
     cd ~
-    rm -rf $HOME/Downloads/shell
+    rm -rf /home/$USERNAME/Downloads/shell
 EOF
 
 print_warning "Please enable your desired extensions using the 'Extension Manager' application after reboot."
