@@ -62,7 +62,6 @@ apt purge -y \
     gnome-characters \
     gnome-clocks \
     gnome-contacts \
-    gnome-documents \
     gnome-font-viewer \
     gnome-logs \
     gnome-maps \
