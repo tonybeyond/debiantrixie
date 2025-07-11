@@ -326,14 +326,9 @@ su - $USERNAME << 'EOF'
     # Setup zsh completions
     mkdir -p ~/.zsh/completions
     cp completions/_fabric ~/.zsh/completions/
-    
-    # Add completion to fpath in zshrc if not already present
-    if ! grep -q "fpath=(~/.zsh/completions \$fpath)" ~/.zshrc; then
-        echo "" >> ~/.zshrc
-        echo "# Fabric completion" >> ~/.zshrc
-        echo "fpath=(~/.zsh/completions \$fpath)" >> ~/.zshrc
-        echo "autoload -U compinit && compinit" >> ~/.zshrc
-    fi
+
+    # adding a empty .env file
+    touch /home/$USERNAME/.config/fabric/.env
     
     cd ~
     rm -rf ~/setup_temp/fabric
