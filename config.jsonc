@@ -4,99 +4,96 @@
         "source": "auto",
         "padding": {
             "top": 1,
-            "left": 2
+            "left": 4
         }
     },
     "display": {
         "separator": " ",
         "color": {
-            "keys": "cyan",
-            "output": "white"
+            "keys": "magenta",
+            "output": "default"
         }
     },
     "modules": [
         {
             "type": "title",
             "color": {
-                "user": "cyan",
-                "at": "white",
-                "host": "cyan"
+                "user": "magenta",
+                "at": "default",
+                "host": "magenta"
             }
         },
         "separator",
         {
             "type": "os",
-            "key": "OS"
+            "key": "󰍹",
+            "keyColor": "magenta"
         },
         {
             "type": "kernel",
-            "key": "Kernel"
+            "key": "󰌽",
+            "keyColor": "magenta"
         },
         {
             "type": "uptime",
-            "key": "Uptime"
+            "key": "󰅐",
+            "keyColor": "magenta"
         },
         {
             "type": "packages",
-            "key": "Packages"
+            "key": "󰏗",
+            "keyColor": "magenta"
         },
         {
             "type": "shell",
-            "key": "Shell"
-        },
-        {
-            "type": "display",
-            "key": "Display"
+            "key": "",
+            "keyColor": "magenta"
         },
         {
             "type": "de",
-            "key": "DE"
+            "key": "",
+            "keyColor": "magenta"
         },
         {
             "type": "wm",
-            "key": "WM"
-        },
-        {
-            "type": "wmtheme",
-            "key": "WM Theme"
-        },
-        {
-            "type": "theme",
-            "key": "Theme"
-        },
-        {
-            "type": "icons",
-            "key": "Icons"
+            "key": "",
+            "keyColor": "magenta"
         },
         {
             "type": "terminal",
-            "key": "Terminal"
-        },
-        {
-            "type": "terminalfont",
-            "key": "Terminal Font"
+            "key": "",
+            "keyColor": "magenta"
         },
         {
             "type": "cpu",
-            "key": "CPU"
+            "key": "",
+            "keyColor": "magenta"
         },
         {
             "type": "gpu",
-            "key": "GPU"
+            "key": "󰢮",
+            "keyColor": "magenta"
         },
         {
             "type": "memory",
-            "key": "Memory"
+            "key": "",
+            "keyColor": "magenta"
         },
         {
             "type": "disk",
-            "key": "Disk (/)",
+            "key": "󰋊",
+            "keyColor": "magenta",
             "folders": "/"
+        },
+        {
+            "type": "localip",
+            "key": "󰩟",
+            "keyColor": "magenta"
         },
         "separator",
         {
             "type": "colors",
-            "paddingLeft": 2,
+            "paddingLeft": 4,
             "symbol": "circle"
         }
     ]
