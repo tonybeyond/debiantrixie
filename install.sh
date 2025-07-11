@@ -133,7 +133,7 @@ apt install -y \
     fzf \
     tree \
     htop \
-    neofetch \
+    fastfetch \
     bat \
     fd-find \
     ripgrep \
@@ -145,22 +145,14 @@ apt install -y \
     gnome-software-plugin-flatpak \
     nodejs \
     npm \
-    typescript \
+    node-typescript \
     make \
     ffmpeg \
     gstreamer1.0-plugins-bad \
     gstreamer1.0-plugins-ugly \
     gstreamer1.0-libav \
-    gstreamer1.0-vaapi
-
-# Install eza (modern replacement for ls)
-print_status "Installing eza (modern ls replacement)..."
-cd /tmp
-wget -c https://github.com/eza-community/eza/releases/latest/download/eza_x86_64-unknown-linux-gnu.tar.gz -O - | tar xz
-chmod +x eza
-chown root:root eza
-mv eza /usr/local/bin/eza
-cd ~
+    gstreamer1.0-vaapi \
+    eza
 
 echo "### Core utilities and modern CLI tools installed. ###"
 echo
@@ -251,10 +243,10 @@ echo
 echo "### SECTION 5: SETTING UP FLATPAK AND FLATHUB ###"
 
 print_status "Adding the Flathub repository..."
-sudo -u $USERNAME flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
 print_status "Installing basic Flatpak applications..."
-sudo -u $USERNAME flatpak install -y flathub \
+flatpak install -y flathub \
     org.mozilla.firefox \
     com.github.tchx84.Flatseal \
     org.videolan.VLC
