@@ -44,19 +44,6 @@ print_error() {
 }
 
 #==============================================================================
-# FUNCTION: INSTALL ADDITIONAL FLATPAK APPLICATIONS
-#==============================================================================
-install_additional_flatpaks() {
-    print_status "Installing additional professional Flatpak applications..."
-    flatpak install -y flathub me.proton.Pass
-    flatpak install -y flathub me.proton.Mail
-    flatpak install -y flathub com.jgraph.drawio.desktop
-    flatpak install -y flathub io.github.brunofin.Cohesion
-    echo "### Additional Flatpak applications installed successfully. ###"
-}
-
-
-#==============================================================================
 # SECTION 1: SYSTEM PREPARATION & GNOME CLEANUP
 #==============================================================================
 echo "### SECTION 1: SYSTEM PREPARATION & GNOME CLEANUP ###"
@@ -256,38 +243,81 @@ echo
 #==============================================================================
 echo "### SECTION 5: SETTING UP FLATPAK AND FLATHUB ###"
 
-print_status "Adding the Flathub repository..."
-flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+print_status "Switching to user context for Flatpak installations..."
+su - $USERNAME << 'EOF'
+    # Add Flathub repository
+    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+    
+    # Install basic Flatpak applications
+    flatpak install -y flathub org.mozilla.firefox com.github.tchx84.Flatseal org.videolan.VLC
+    
+    # Install additional professional applications
+    flatpak install -y flathub me.proton.Pass me.proton.Mail com.jgraph.drawio.desktop io.github.brunofin.Cohesion
+EOF
 
-print_status "Installing basic Flatpak applications..."
-flatpak install -y flathub \
-    com.github.tchx84.Flatseal \
-    org.videolan.VLC
-
-# Install additional professional applications
-install_additional_flatpaks
+# Verify installations completed successfully
+if su - $USERNAME -c "flatpak list | grep -q 'me.proton.Pass'"; then
+    print_status "Flatpak applications installed successfully"
+else
+    print_warning "Some Flatpak installations may have failed. Check manually."
+fi
 
 echo "### Flatpak setup complete with all applications installed. ###"
 echo
 
 #==============================================================================
-# SECTION 6: GNOME SHELL EXTENSIONS
+# SECTION 8: FABRIC (BY DANIEL MIESSLER) INSTALLATION
 #==============================================================================
-echo "### SECTION 6: INSTALLING GNOME SHELL EXTENSIONS ###"
+echo "### SECTION 8: INSTALLING FABRIC ###"
+
+print_status "Installing Fabric via the Go method..."
+
+# Ensure we're in the user's home directory and set proper environment
+cd $USER_HOME
+
+# Install Fabric with proper user context and environment
+sudo -u $USERNAME bash -c "
+    cd $USER_HOME
+    export GOPATH=$USER_HOME/go
+    export PATH=\$PATH:\$GOPATH/bin:/usr/local/go/bin
+    export HOME=$USER_HOME
+    go install github.com/danielmiessler/fabric/cmd/fabric@latest
+"
+
+# Verify installation
+if [ -f "$USER_HOME/go/bin/fabric" ]; then
+    print_status "Fabric installed successfully at $USER_HOME/go/bin/fabric"
+else
+    print_warning "Fabric installation may have failed. Please check manually."
+fi
+
+echo "### Fabric has been installed. ###"
+echo
+
+
+#==============================================================================
+# SECTION 9: FINAL OPTIMIZATIONS & CLEANUP
+#==============================================================================
+echo "### SECTION 9: FINAL OPTIMIZATIONS & CLEANUP ###"
+
+print_status "Cleaning up APT cache and removing orphaned packages..."
+apt autoremove -y
+apt autoclean
+
+print_status "Setting up system optimizations..."
+# Disable unnecessary services for better performance
+systemctl disable cups.service 2>/dev/null || true
+
+echo "### System optimizations completed. ###"
+echo
+
+#==============================================================================
+# SECTION 10: GNOME SHELL EXTENSIONS
+#==============================================================================
+echo "### SECTION 10: INSTALLING GNOME SHELL EXTENSIONS ###"
 
 print_status "Installing base packages for GNOME extensions..."
 apt install -y gnome-shell-extensions gnome-shell-extension-manager gnome-shell-extension-prefs
-
-# --- Pop Shell ---
-print_status "Installing Pop Shell Tiling Extension..."
-(
-  cd /tmp
-  git clone https://github.com/pop-os/shell.git
-  cd shell
-  git checkout master_noble
-  make local-install
-  cd ~
-)
 
 # --- Additional Extensions from APT where available ---
 print_status "Installing additional GNOME extensions from repositories..."
@@ -309,37 +339,20 @@ else
     cd ~
 fi
 
+# --- Pop Shell ---
+print_status "Installing Pop Shell Tiling Extension..."
+(
+  cd /tmp
+  git clone https://github.com/pop-os/shell.git
+  cd shell
+  git checkout master_noble
+  make local-install
+  cd ~
+)
+
 print_warning "Please enable your desired extensions using the 'Extension Manager' application after reboot."
 
 echo "### GNOME Shell extensions installed. ###"
-echo
-
-#==============================================================================
-# SECTION 7: FABRIC (BY DANIEL MIESSLER) INSTALLATION
-#==============================================================================
-echo "### SECTION 7: INSTALLING FABRIC ###"
-
-print_status "Installing Fabric via the Go method..."
-sudo -u $USERNAME bash -c 'export GOPATH=$HOME/go && export PATH=$PATH:$GOPATH/bin:/usr/local/go/bin && go install github.com/danielmiessler/fabric/cmd/fabric@latest'
-
-echo "### Fabric has been installed. ###"
-echo
-
-#==============================================================================
-# SECTION 8: FINAL OPTIMIZATIONS & CLEANUP
-#==============================================================================
-echo "### SECTION 8: FINAL OPTIMIZATIONS & CLEANUP ###"
-
-print_status "Cleaning up APT cache and removing orphaned packages..."
-apt autoremove -y
-apt autoclean
-
-print_status "Setting up system optimizations..."
-# Disable unnecessary services for better performance
-systemctl disable bluetooth.service 2>/dev/null || true
-systemctl disable cups.service 2>/dev/null || true
-
-echo "### System optimizations completed. ###"
 echo
 
 #==============================================================================
