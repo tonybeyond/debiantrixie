@@ -15,6 +15,7 @@
 # - GNOME extensions (Pop Shell, Blur My Shell, etc.)
 # - Fabric installation via Go
 # - Media codecs for video consumption
+# - Professional applications (Proton Mail/Pass, Draw.io, Cohesion)
 #==============================================================================
 
 # Exit immediately if a command exits with a non-zero status.
@@ -41,6 +42,19 @@ print_warning() {
 print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
+
+#==============================================================================
+# FUNCTION: INSTALL ADDITIONAL FLATPAK APPLICATIONS
+#==============================================================================
+install_additional_flatpaks() {
+    print_status "Installing additional professional Flatpak applications..."
+    flatpak install -y flathub me.proton.Pass
+    flatpak install -y flathub me.proton.Mail
+    flatpak install -y flathub com.jgraph.drawio.desktop
+    flatpak install -y flathub io.github.brunofin.Cohesion
+    echo "### Additional Flatpak applications installed successfully. ###"
+}
+
 
 #==============================================================================
 # SECTION 1: SYSTEM PREPARATION & GNOME CLEANUP
@@ -239,13 +253,16 @@ echo "### SECTION 5: SETTING UP FLATPAK AND FLATHUB ###"
 print_status "Adding the Flathub repository..."
 sudo -u $USERNAME flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
-print_status "Installing useful Flatpak applications..."
+print_status "Installing basic Flatpak applications..."
 sudo -u $USERNAME flatpak install -y flathub \
     org.mozilla.firefox \
     com.github.tchx84.Flatseal \
     org.videolan.VLC
 
-echo "### Flatpak is ready to use. ###"
+# Install additional professional applications
+install_additional_flatpaks
+
+echo "### Flatpak setup complete with all applications installed. ###"
 echo
 
 #==============================================================================
@@ -344,6 +361,11 @@ echo "✓ Ghostty terminal"
 echo "✓ Fabric by Daniel Miessler"
 echo "✓ Media codecs for YouTube and video consumption"
 echo "✓ Development tools (Node.js, Python, Go)"
+echo "✓ Professional applications:"
+echo "  • Proton Pass (password manager)"
+echo "  • Proton Mail (secure email client)"
+echo "  • Draw.io Desktop (diagram creation)"
+echo "  • Cohesion (Git client)"
 echo "✓ System optimizations for performance"
 echo
 echo "-----------------------------------------------------------------"
@@ -354,6 +376,7 @@ echo "2. Log into Zsh (should be default) - plugins will be automatically loaded
 echo "3. Test fzf with Ctrl+R for fuzzy command history search"
 echo "4. Run 'fabric --setup' to configure Fabric"
 echo "5. Try modern aliases: 'ls' (eza), 'll' (eza -l), 'cat' (bat)"
+echo "6. Configure Proton Pass and Proton Mail with your credentials"
 echo "-----------------------------------------------------------------"
 echo
 read -p "Reboot now? (y/n): " REBOOT_CHOICE
