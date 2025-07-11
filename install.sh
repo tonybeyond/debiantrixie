@@ -209,6 +209,7 @@ alias la='eza -la --icons'
 alias tree='eza --tree --icons'
 alias cat='batcat'
 alias find='fd'
+alias neofetch='fastfetch' 
 alias grep='rg'
 EOF
 
@@ -231,11 +232,24 @@ apt update && apt install -y vivaldi-stable
 
 # --- Ghostty Terminal Installation ---
 print_status "Installing Ghostty Terminal..."
-curl -sS https://raw.githubusercontent.com/clayrisser/debian-ghostty/main/install.sh | bash
-apt update && apt install -y ghostty
+cd /tmp
+ARCH="$(dpkg --print-architecture)"
+curl -LO https://download.opensuse.org/repositories/home:/clayrisser:/sid/Debian_Unstable/$ARCH/ghostty_1.1.3-2_$ARCH.deb
+apt install -y ./ghostty_1.1.3-2_$ARCH.deb
 
-echo "### Vivaldi and Ghostty installed. ###"
+# Create Ghostty config directory and copy configuration
+print_status "Setting up Ghostty configuration..."
+sudo -u $USERNAME mkdir -p $USER_HOME/.config/ghostty
+sudo -u $USERNAME wget -O $USER_HOME/.config/ghostty/config https://raw.githubusercontent.com/tonybeyond/ubuntu2404/refs/heads/main/ghostty/.config/ghostty/config
+
+# Fix ownership of config file
+chown -R $USERNAME:$USERNAME $USER_HOME/.config/ghostty
+
+cd ~
+
+echo "### Vivaldi and Ghostty installed with custom configuration. ###"
 echo
+
 
 #==============================================================================
 # SECTION 5: FLATPAK & FLATHUB SETUP
@@ -247,7 +261,6 @@ flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flat
 
 print_status "Installing basic Flatpak applications..."
 flatpak install -y flathub \
-    org.mozilla.firefox \
     com.github.tchx84.Flatseal \
     org.videolan.VLC
 
