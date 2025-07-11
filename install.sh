@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Debian Trixie Workstation Setup Script
+# Debian Trixie Workstation Setup Script - Enhanced Version
 # Optimized for professional web browsing, light development, and media consumption
 
 set -e
 
 echo "=========================================="
-echo "Debian Trixie Workstation Setup"
+echo "Debian Trixie Workstation Setup - Enhanced"
 echo "=========================================="
 
 # Colors for output
@@ -64,7 +64,47 @@ fi
 print_status "Updating package database..."
 sudo apt update
 
-# Install essential packages
+# Remove unnecessary GNOME packages for a lean system
+print_status "Removing unnecessary GNOME packages..."
+sudo apt purge -y \
+    gnome-2048 \
+    gnome-calculator \
+    gnome-calendar \
+    gnome-characters \
+    gnome-clocks \
+    gnome-contacts \
+    gnome-documents \
+    gnome-font-viewer \
+    gnome-logs \
+    gnome-maps \
+    gnome-music \
+    gnome-photos \
+    gnome-screenshot \
+    gnome-system-monitor \
+    gnome-weather \
+    gnome-games \
+    gnome-mahjongg \
+    gnome-mines \
+    gnome-sudoku \
+    gnome-tetravex \
+    gnome-klotski \
+    gnome-nibbles \
+    gnome-robots \
+    gnome-taquin \
+    aisleriot \
+    five-or-more \
+    four-in-a-row \
+    gnome-chess \
+    gnome-tour \
+    cheese \
+    totem \
+    rhythmbox \
+    evolution \
+    thunderbird \
+    libreoffice-common \
+    2>/dev/null || true
+
+# Install essential packages including fzf
 print_status "Installing essential packages..."
 sudo apt install -y \
     curl \
@@ -72,8 +112,6 @@ sudo apt install -y \
     git \
     vim \
     zsh \
-    eza \
-    fzf \
     build-essential \
     software-properties-common \
     apt-transport-https \
@@ -89,7 +127,27 @@ sudo apt install -y \
     make \
     gnome-shell-extensions \
     gnome-shell-extension-prefs \
-    firefox-esr
+    firefox-esr \
+    fzf \
+    tree \
+    htop \
+    neofetch \
+    bat \
+    fd-find \
+    ripgrep \
+    jq \
+    python3 \
+    python3-pip \
+    python3-venv
+
+# Install eza (modern replacement for ls)
+print_status "Installing eza..."
+cd /tmp
+wget -c https://github.com/eza-community/eza/releases/latest/download/eza_x86_64-unknown-linux-gnu.tar.gz -O - | tar xz
+sudo chmod +x eza
+sudo chown root:root eza
+sudo mv eza /usr/local/bin/eza
+cd ~
 
 # Install Flatpak and Flathub
 print_status "Setting up Flatpak and Flathub..."
@@ -118,9 +176,52 @@ if [ ! -d "$HOME/.oh-my-zsh" ]; then
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 fi
 
+# Install zsh plugins
+print_status "Installing zsh plugins..."
+# zsh-autosuggestions
+git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+
+# zsh-syntax-highlighting
+git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+
+# zsh-autocomplete
+git clone --depth 1 -- https://github.com/marlonrichert/zsh-autocomplete.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autocomplete
+
 # Download and setup .zshrc
 print_status "Setting up .zshrc configuration..."
 curl -fsSL https://raw.githubusercontent.com/tonybeyond/ubuntu2404/main/zsh/.zshrc -o ~/.zshrc
+
+# Ensure plugins are enabled in .zshrc
+print_status "Configuring zsh plugins..."
+# Check if plugins line exists and update it
+if grep -q "plugins=(" ~/.zshrc; then
+    sed -i 's/plugins=.*/plugins=(git zsh-autosuggestions zsh-syntax-highlighting zsh-autocomplete)/' ~/.zshrc
+else
+    echo "plugins=(git zsh-autosuggestions zsh-syntax-highlighting zsh-autocomplete)" >> ~/.zshrc
+fi
+
+# Add fzf configuration to .zshrc
+print_status "Configuring fzf..."
+cat >> ~/.zshrc << 'EOF'
+
+# FZF configuration
+if [ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]; then
+    source /usr/share/doc/fzf/examples/key-bindings.zsh
+fi
+if [ -f /usr/share/doc/fzf/examples/completion.zsh ]; then
+    source /usr/share/doc/fzf/examples/completion.zsh
+fi
+
+# FZF options for better experience
+export FZF_DEFAULT_OPTS='--layout=reverse --height=80% --preview "cat {} || tree -C {} | head -100"'
+
+# Modern command aliases
+alias ls='eza --icons'
+alias ll='eza -l --icons'
+alias la='eza -la --icons'
+alias tree='eza --tree --icons'
+alias cat='batcat'
+EOF
 
 # Change default shell to zsh
 print_status "Changing default shell to zsh..."
@@ -142,7 +243,7 @@ sudo apt install -y \
     gnome-shell-extension-workspace-indicator \
     gnome-shell-extension-user-theme
 
-# Install Blur My Shell extension manually (not available in repos)
+# Install Blur My Shell extension manually
 print_status "Installing Blur My Shell extension..."
 cd /tmp
 git clone https://github.com/aunetx/blur-my-shell.git
@@ -163,22 +264,6 @@ if ! grep -q "export GOPATH" ~/.zshrc; then
     echo "export GOPATH=\$HOME/go" >> ~/.zshrc
     echo "export PATH=\$PATH:\$GOPATH/bin:/usr/local/go/bin" >> ~/.zshrc
 fi
-
-# Install development tools
-print_status "Installing development tools..."
-sudo apt install -y \
-    code \
-    git \
-    tree \
-    htop \
-    neofetch \
-    bat \
-    fd-find \
-    ripgrep \
-    jq \
-    python3 \
-    python3-pip \
-    python3-venv
 
 # Install media codecs for YouTube and video playback
 print_status "Installing media codecs..."
@@ -202,24 +287,27 @@ flatpak install -y flathub \
     org.videolan.VLC
 
 print_status "=========================================="
-print_status "Setup completed successfully!"
+print_status "Enhanced setup completed successfully!"
 print_status "=========================================="
 print_warning "Please reboot your system to ensure all changes take effect."
 print_warning "After reboot, you may need to:"
 print_warning "1. Enable GNOME extensions via Extensions app"
 print_warning "2. Run 'fabric --setup' to configure Fabric"
-print_warning "3. Configure your development environment"
+print_warning "3. Test fzf with Ctrl+R for command history search"
 
 echo ""
-echo "Installed components:"
+echo "Installed and configured:"
+echo "✓ Removed unnecessary GNOME packages (clocks, music, maps, etc.)"
 echo "✓ Debian Trixie repositories"
 echo "✓ Vivaldi Browser"
 echo "✓ Flatpak with Flathub support"
 echo "✓ Pop Shell GNOME extension"
 echo "✓ Workspace Indicator extension"
 echo "✓ Blur My Shell extension"
-echo "✓ Oh My Zsh with custom configuration"
+echo "✓ Oh My Zsh with plugins: autosuggestions, syntax-highlighting, autocomplete"
+echo "✓ fzf (fuzzy finder) with key bindings"
+echo "✓ eza (modern ls replacement)"
 echo "✓ Ghostty terminal"
 echo "✓ Fabric by Daniel Miessler"
-echo "✓ Development tools"
+echo "✓ Development tools and modern CLI utilities"
 echo "✓ Media codecs"
