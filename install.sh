@@ -238,7 +238,7 @@ su - $USERNAME << 'EOF'
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
     
     # Install basic Flatpak applications
-    flatpak install -y flathub org.mozilla.firefox com.github.tchx84.Flatseal org.videolan.VLC
+    flatpak install -y flathub com.github.tchx84.Flatseal org.videolan.VLC
     
     # Install additional professional applications
     flatpak install -y flathub me.proton.Pass me.proton.Mail com.jgraph.drawio.desktop io.github.brunofin.Cohesion
