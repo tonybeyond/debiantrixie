@@ -326,29 +326,33 @@ apt install -y \
     gnome-shell-extension-user-theme \
     2>/dev/null || true
 
-# Install extensions not available in repos
-if apt list --installed | grep -q gnome-shell-extension-blur-my-shell; then
-    print_status "Blur My Shell already available in repos, installing..."
+# --- Blur My Shell Extension ---
+if apt-cache show gnome-shell-extension-blur-my-shell >/dev/null 2>&1; then
+    print_status "Installing Blur My Shell from repository..."
     apt install -y gnome-shell-extension-blur-my-shell
 else
-    print_status "Installing Blur My Shell extension manually..."
-    cd /tmp
-    git clone https://github.com/aunetx/blur-my-shell.git
-    cd blur-my-shell
-    sudo -u $USERNAME make install
-    cd ~
+    print_status "Installing Blur My Shell extension manually in user context..."
+    su - $USERNAME << 'EOF'
+        cd /tmp
+        git clone https://github.com/aunetx/blur-my-shell.git
+        cd blur-my-shell
+        make install
+        cd ~
+        rm -rf /tmp/blur-my-shell
+EOF
 fi
 
 # --- Pop Shell ---
-print_status "Installing Pop Shell Tiling Extension..."
-(
-  cd /tmp
-  git clone https://github.com/pop-os/shell.git
-  cd shell
-  git checkout master_noble
-  make local-install
-  cd ~
-)
+print_status "Installing Pop Shell Tiling Extension in user context..."
+su - $USERNAME << 'EOF'
+    cd /tmp
+    git clone https://github.com/pop-os/shell.git
+    cd shell
+    git checkout master_noble
+    make local-install
+    cd ~
+    rm -rf /tmp/shell
+EOF
 
 print_warning "Please enable your desired extensions using the 'Extension Manager' application after reboot."
 
