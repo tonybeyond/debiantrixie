@@ -132,6 +132,7 @@ apt install -y \
     jq \
     btop \
     yt-dlp \
+    glow \
     python3 \
     python3-pip \
     python3-venv \
