@@ -130,6 +130,8 @@ apt install -y \
     fd-find \
     ripgrep \
     jq \
+    btop \
+    yt-dlp \
     python3 \
     python3-pip \
     python3-venv \
