@@ -162,15 +162,7 @@ main() {
         fzf tree htop bat fd-find ripgrep jq btop yt-dlp glow xclip python3 \
         python3-pip python3-venv flatpak ffmpeg gstreamer1.0-plugins-bad \
         gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-vaapi \
-        nodejs npm node-typescript make
-
-    # Install eza (modern replacement for ls)
-    print_status "Installing eza..."
-    cd "$WORK_DIR"
-    retry_command 3 5 wget -c https://github.com/eza-community/eza/releases/latest/download/eza_x86_64-unknown-linux-gnu.tar.gz -O - | tar xz
-    chmod +x eza
-    chown root:root eza
-    mv eza /usr/local/bin/eza
+        nodejs npm node-typescript make eza
 
     # Setup Fastfetch configuration
     print_status "Configuring fastfetch..."
