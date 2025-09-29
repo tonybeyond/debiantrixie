@@ -13,7 +13,7 @@
 # - Modern CLI tools (fzf, eza, bat, ripgrep)
 # - Complete zsh setup with plugins
 # - Flatpak instead of Snap
-# - Vivaldi browser + Ghostty terminal
+# - Vivaldi browser + Ghostty terminal (via APT repository)
 # - Fabric installation via Go with completions
 # - Media codecs for video consumption
 # - Professional applications (Proton Mail/Pass, Draw.io, Cohesion)
@@ -99,7 +99,7 @@ install_core_tools() {
     
     # Base packages for both DEs
     local packages=(
-        apt-transport-https curl wget git build-essential zsh golang fzf tree eza
+        apt-transport-https curl wget git build-essential zsh golang fzf tree
         htop fastfetch bat fd-find ripgrep jq btop yt-dlp glow xclip python3
         python3-pip python3-venv flatpak nodejs npm node-typescript make ffmpeg
         gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-vaapi
@@ -112,6 +112,10 @@ install_core_tools() {
     fi
 
     apt install -y "${packages[@]}"
+
+    # Install eza (modern replacement for ls)
+    print_status "Installing eza (modern ls replacement)..."
+    wget -qO- https://github.com/eza-community/eza/releases/latest/download/eza_x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin eza
 
     # Configure fastfetch
     print_status "Configuring fastfetch with custom configuration..."
@@ -138,22 +142,28 @@ setup_zsh() {
 
 install_desktop_apps() {
     print_section "SECTION 4: INSTALLING BROWSER & TERMINAL"
-    
-    # Vivaldi Browser
-    print_status "Installing Vivaldi Browser..."
+    print_status "Adding third-party repositories for Vivaldi and Ghostty..."
+
+    # --- Vivaldi Browser Repository ---
     wget -qO- https://repo.vivaldi.com/archive/linux_signing_key.pub | gpg --dearmor > /usr/share/keyrings/vivaldi-browser.gpg
     echo "deb [signed-by=/usr/share/keyrings/vivaldi-browser.gpg] https://repo.vivaldi.com/archive/deb/ stable main" > /etc/apt/sources.list.d/vivaldi-archive.list
-    apt update && apt install -y vivaldi-stable
 
-    # Ghostty Terminal
-    print_status "Installing Ghostty Terminal..."
+    # --- Ghostty Terminal Repository ---
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.opensuse.org/repositories/home:clayrisser:sid/Debian_Unstable/Release.key | gpg --dearmor > /etc/apt/keyrings/home_clayrisser_sid.gpg
     local arch
     arch="$(dpkg --print-architecture)"
-    wget -P "$WORK_DIR" "https://download.opensuse.org/repositories/home:/clayrisser:/sid/Debian_Unstable/$arch/ghostty_1.1.3-2_$arch.deb"
-    
-    print_status "Installing Ghostty (handling potential terminfo conflicts)..."
-    dpkg -i --force-overwrite "$WORK_DIR/ghostty_1.1.3-2_$arch.deb" || true
-    apt-get install -f -y # Fix any broken dependencies
+    tee /etc/apt/sources.list.d/home:clayrisser:sid.sources > /dev/null <<EOF
+Types: deb
+URIs: http://download.opensuse.org/repositories/home:/clayrisser:/sid/Debian_Unstable/
+Suites: /
+Architectures: $arch
+Signed-By: /etc/apt/keyrings/home_clayrisser_sid.gpg
+EOF
+
+    print_status "Updating package lists and installing Vivaldi & Ghostty..."
+    apt update
+    apt install -y vivaldi-stable ghostty
 
     print_status "Setting up Ghostty configuration..."
     run_as_user mkdir -p "$USER_HOME/.config/ghostty"
@@ -162,14 +172,15 @@ install_desktop_apps() {
 
 setup_flatpak() {
     print_section "SECTION 5: SETTING UP FLATPAK AND FLATHUB"
-    print_status "Adding Flathub repository and installing applications..."
+    print_status "Adding Flathub repository and installing applications for the current user..."
     
     # Run flatpak commands as the user in a login shell
     su - "$USERNAME" <<'EOF'
-        flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+        # Add the --user flag to install for the user, not system-wide
+        flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
         
-        # Install applications
-        flatpak install -y flathub \
+        # Add the --user flag here as well
+        flatpak install --user -y flathub \
             com.github.tchx84.Flatseal \
             org.videolan.VLC \
             me.proton.Pass \
