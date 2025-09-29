@@ -99,7 +99,7 @@ install_core_tools() {
     
     # Base packages for both DEs
     local packages=(
-        apt-transport-https curl wget git build-essential zsh golang fzf tree
+        apt-transport-https curl wget git build-essential zsh golang fzf tree eza
         htop fastfetch bat fd-find ripgrep jq btop yt-dlp glow xclip python3
         python3-pip python3-venv flatpak nodejs npm node-typescript make ffmpeg
         gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-vaapi
@@ -112,10 +112,6 @@ install_core_tools() {
     fi
 
     apt install -y "${packages[@]}"
-
-    # Install eza (modern replacement for ls)
-    print_status "Installing eza (modern ls replacement)..."
-    wget -qO- https://github.com/eza-community/eza/releases/latest/download/eza_x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin eza
 
     # Configure fastfetch
     print_status "Configuring fastfetch with custom configuration..."
