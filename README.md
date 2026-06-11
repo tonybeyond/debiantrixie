@@ -21,6 +21,7 @@ debian-trixie/
 │   ├── bash-setup.sh      # ble.sh — à lancer manuellement post-reboot
 │   ├── citrix-setup.sh    # Citrix Workspace App — à lancer manuellement
 │   ├── niri-setup.sh      # Niri WM (build Rust ~20 min) — à lancer manuellement
+│   ├── refreshos-setup.sh # Setup pour RefreshOS 3 (post-Calamares)
 │   ├── edge.sh / outlook.sh / teams.sh / perplexity.sh
 │   ├── youtube.sh / textrecon.sh
 └── README.md
@@ -136,6 +137,49 @@ Keybinds (Brave au lieu de Firefox, clavier ch/fr) :
 | `Print` | Screenshot |
 
 ---
+
+
+---
+
+## RefreshOS 3 (variante KDE)
+
+[RefreshOS 3](https://refreshos.org) est basé sur Debian 13 Trixie avec KDE Plasma 6, Brave et codecs préinstallés.
+
+⚠️ **Le preseed ne fonctionne PAS sur RefreshOS** : il s'installe via Calamares (live ISO), pas debian-installer.
+Le workflow est donc : installation manuelle Calamares (~6 clics, 10 min), puis script automatisé.
+
+```bash
+# Après l'installation RefreshOS via Calamares :
+sudo git clone https://github.com/tonybeyond/debiantrixie.git /opt/debiantrixie
+sudo bash /opt/debiantrixie/scripts/refreshos-setup.sh
+```
+
+### Ce que fait refreshos-setup.sh
+
+| Action | Détail |
+|--------|--------|
+| **Supprime** | Elisa, Kdenlive, Thunderbird, KWave, KolourPaint |
+| **Garde** (inclus RefreshOS) | Brave, VLC, LibreOffice, GIMP, PhotoQt |
+| **Distrobox + Podman** | Équivalent Toolbox/Silverblue — conteneurs Fedora/Arch/Ubuntu intégrés |
+| **VS Code** | Repo Microsoft officiel |
+| **Zed** | Script officiel zed.dev |
+| **Claude Code** | CLI officiel Anthropic |
+| **Claude Desktop** | Build communautaire [aaddrick](https://github.com/aaddrick/claude-desktop-debian) (repo APT signé) |
+| **Proton Mail** | .deb officiel (⚠ premium requis après 14j) |
+| **Stack habituelle** | Ghostty, Neovim+kickstart, Zsh+OMZ, Starship, Hack Nerd Font, locale en_US+fr_CH |
+| **Citrix** | Si .deb présent dans ~/Downloads |
+
+L'utilisateur est détecté dynamiquement (`$SUDO_USER`) puisque créé via Calamares.
+
+### Distrobox — exemple d'usage
+
+```bash
+# Créer un conteneur Fedora intégré au desktop
+distrobox create --name fedora --image fedora:latest
+distrobox enter fedora
+
+# Les apps GUI du conteneur s'intègrent au desktop hôte
+```
 
 ## Usage standalone
 
