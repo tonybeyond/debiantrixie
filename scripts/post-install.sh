@@ -320,10 +320,11 @@ fi
 # ── Claude Desktop (build communautaire aaddrick, repo APT signé) ────────────
 log_section "Claude Desktop (communautaire)"
 if ! is_installed claude-desktop; then
-  curl -fsSL https://aaddrick.github.io/claude-desktop-debian/KEY.gpg \
+  # Domaine direct : aaddrick.github.io redirige en HTTP (refusé par apt)
+  curl -fsSL https://pkg.claude-desktop-debian.dev/KEY.gpg \
     | gpg --dearmor -o /usr/share/keyrings/claude-desktop.gpg
   echo "deb [signed-by=/usr/share/keyrings/claude-desktop.gpg arch=amd64,arm64] \
-https://aaddrick.github.io/claude-desktop-debian stable main" \
+https://pkg.claude-desktop-debian.dev stable main" \
     > /etc/apt/sources.list.d/claude-desktop.list
   apt update -q && apt install -y claude-desktop \
     && log_ok "Claude Desktop installé" \
