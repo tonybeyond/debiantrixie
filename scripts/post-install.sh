@@ -273,6 +273,77 @@ BASHRC_BLOCK
   log_ok ".bashrc patché"
 fi
 
+# ── Distrobox + Podman (équivalent Toolbox/Silverblue) ───────────────────────
+log_section "Distrobox + Podman"
+apt_install podman distrobox uidmap slirp4netns
+log_ok "Distrobox prêt — ex: distrobox create --name fedora --image fedora:latest"
+
+# ── VS Code (repo Microsoft officiel) ─────────────────────────────────────────
+log_section "VS Code"
+if ! command -v code &>/dev/null; then
+  curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
+    | gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
+  echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/microsoft.gpg] \
+https://packages.microsoft.com/repos/code stable main" \
+    > /etc/apt/sources.list.d/vscode.list
+  apt update -q && apt install -y code \
+    && log_ok "VS Code installé" || log_error "VS Code install"
+else
+  log_ok "VS Code déjà présent"
+fi
+
+# ── Zed (script officiel, install user) ───────────────────────────────────────
+log_section "Zed"
+if [[ ! -x "${TARGET_HOME}/.local/bin/zed" ]] && ! command -v zed &>/dev/null; then
+  as_user "curl -fsSL https://zed.dev/install.sh | sh" \
+    && log_ok "Zed installé → ~/.local/bin/zed" \
+    || log_error "Zed install"
+else
+  log_ok "Zed déjà présent"
+fi
+
+# ── Claude Code CLI (officiel Anthropic) ──────────────────────────────────────
+log_section "Claude Code CLI"
+if [[ ! -x "${TARGET_HOME}/.local/bin/claude" ]] && ! command -v claude &>/dev/null; then
+  as_user "curl -fsSL https://claude.ai/install.sh | bash" \
+    && log_ok "Claude Code installé (officiel)" \
+    || log_error "Claude Code install"
+else
+  log_ok "Claude Code déjà présent"
+fi
+
+# ── Claude Desktop (build communautaire aaddrick, repo APT signé) ────────────
+log_section "Claude Desktop (communautaire)"
+if ! is_installed claude-desktop; then
+  curl -fsSL https://aaddrick.github.io/claude-desktop-debian/KEY.gpg \
+    | gpg --dearmor -o /usr/share/keyrings/claude-desktop.gpg
+  echo "deb [signed-by=/usr/share/keyrings/claude-desktop.gpg arch=amd64,arm64] \
+https://aaddrick.github.io/claude-desktop-debian stable main" \
+    > /etc/apt/sources.list.d/claude-desktop.list
+  apt update -q && apt install -y claude-desktop \
+    && log_ok "Claude Desktop installé" \
+    || log_error "Claude Desktop install"
+else
+  log_ok "Claude Desktop déjà présent"
+fi
+
+# ── Proton Mail Desktop ───────────────────────────────────────────────────────
+log_section "Proton Mail"
+if ! is_installed proton-mail; then
+  PROTON_DEB="/tmp/ProtonMail-desktop.deb"
+  if curl -fL --connect-timeout 15 -o "${PROTON_DEB}" \
+      "https://proton.me/download/mail/linux/ProtonMail-desktop-beta.deb" 2>>"${LOG_FILE}"; then
+    apt install -y "${PROTON_DEB}" \
+      && log_ok "Proton Mail installé (⚠ premium requis après 14j)" \
+      || log_error "Proton Mail dpkg failed"
+    rm -f "${PROTON_DEB}"
+  else
+    log_error "Proton Mail download failed — installer depuis proton.me/mail/download"
+  fi
+else
+  log_ok "Proton Mail déjà présent"
+fi
+
 # ── Shadow PC (cloud gaming/workstation) ─────────────────────────────────────
 log_section "Shadow PC"
 if ! is_installed shadow-prod && ! command -v shadow-prod &>/dev/null; then
