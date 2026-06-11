@@ -94,6 +94,21 @@ LOCALE_EOF
 update-locale 2>/dev/null || true
 log_ok "Locale : en_US (interface) + fr_CH (formats)"
 
+# ── Brave Origin (version minimaliste, gratuite sur Linux) ───────────────────
+log_section "Brave Origin"
+if ! command -v brave-origin &>/dev/null; then
+  curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg \
+    https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+  curl -fsSLo /etc/apt/sources.list.d/brave-browser.sources \
+    https://brave-browser-apt-release.s3.brave.com/brave-browser.sources
+  apt update -q
+  apt install -y brave-origin 2>>"${LOG_FILE}" \
+    && log_ok "Brave Origin installé (le Brave RefreshOS préinstallé reste en place)" \
+    || log_error "Brave Origin install — le Brave préinstallé reste utilisable"
+else
+  log_ok "Brave Origin déjà présent"
+fi
+
 # ── 5. Distrobox + Podman (équivalent Toolbox/Silverblue) ────────────────────
 log_section "Distrobox + Podman"
 apt_install podman distrobox
