@@ -2,6 +2,7 @@
 
 Configuration Debian 13 Trixie — installation entièrement automatisée via **preseed**.  
 Interface : **en_US** · Formats : **fr_CH** · Clavier : **ch/fr** · User : **deby**  
+Chiffrement : **LUKS full-disk** (passphrase au boot)  
 Stack : Brave · Ghostty · Neovim · Zsh · Starship · Hack Nerd Font · Citrix Workspace
 
 ---
@@ -61,6 +62,38 @@ Insérer la clé → démarrer (F12/F2/DEL) → l'installation démarre automati
 ⚠ GNOME est téléchargé depuis le miroir Debian CH pendant l'installation (~15-30 min selon la connexion).
 
 ---
+
+
+---
+
+## Chiffrement du disque (LUKS)
+
+Le preseed active le **chiffrement intégral du disque** en LVM-on-LUKS : tout le système (`/`, swap) est dans un conteneur LUKS.
+
+**La passphrase n'est stockée nulle part.** `partman-crypto` la demande **interactivement pendant l'installation** — c'est le seul moment de saisie non automatisé du preseed. Au démarrage, le système demande cette passphrase avant le login (saisie manuelle, le plus sûr).
+
+### Déroulé de l'installation avec chiffrement
+
+1. Boot sur la clé USB → l'install démarre automatiquement
+2. **Interruption volontaire** : partman demande la passphrase LUKS → tu la saisis (2×)
+3. L'install reprend en automatique (LVM créé dans le conteneur chiffré)
+4. GNOME téléchargé, post-install, reboot
+
+### À chaque démarrage
+
+```
+┌─────────────────────────────────────┐
+│  Please unlock disk sda3_crypt:      │
+│  [saisie de la passphrase LUKS]      │
+└─────────────────────────────────────┘
+        ↓ (déverrouillage)
+   Login GNOME normal
+```
+
+> ⚠️ **Passphrase LUKS ≠ mot de passe utilisateur.** Ce sont deux secrets distincts (impossible de les fusionner proprement sans stocker la clé en clair). Tu peux choisir la même valeur lors de l'install, mais ce sont bien deux saisies : LUKS au boot, puis le login.
+
+> 💡 Perte de la passphrase LUKS = données **irrécupérables**. Pas de backdoor. Note-la dans un gestionnaire de mots de passe.
+
 
 ## Différences clés vs Ubuntu Autoinstall
 
