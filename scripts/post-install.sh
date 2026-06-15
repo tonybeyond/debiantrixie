@@ -6,6 +6,7 @@
 # Lancement manuel : sudo bash /opt/debiantrixie/scripts/post-install.sh
 #
 # Scripts post-reboot (manuels) :
+#   bash /opt/debiantrixie/scripts/gnome-anduinos.sh   (GNOME style Win11/AnduinOS)
 #   bash /opt/debiantrixie/scripts/niri-setup.sh       (~20 min)
 #   bash /opt/debiantrixie/scripts/bash-setup.sh       (ble.sh)
 #   sudo bash /opt/debiantrixie/scripts/citrix-setup.sh  (nécessite .deb)
@@ -397,7 +398,9 @@ echo "║  debiantrixie post-install — TERMINÉ                        ║"
 printf "║  Erreurs : %-3d                                               ║\n" "${ERROR_COUNT}"
 echo "╠══════════════════════════════════════════════════════════════╣"
 echo "║  Scripts post-reboot :                                      ║"
-echo "║  1. bash /opt/debiantrixie/scripts/niri-setup.sh  (~20 min) ║"
-echo "║  2. bash /opt/debiantrixie/scripts/bash-setup.sh  (ble.sh)  ║"
+echo "║  1. bash /opt/debiantrixie/scripts/gnome-anduinos.sh        ║"
+echo "║     (GNOME style Win11 : taskbar, menu démarrer, tiling)    ║"
+echo "║  2. bash /opt/debiantrixie/scripts/niri-setup.sh  (~20 min) ║"
+echo "║  3. bash /opt/debiantrixie/scripts/bash-setup.sh  (ble.sh)  ║"
 echo "║  3. sudo bash /opt/debiantrixie/scripts/citrix-setup.sh     ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
