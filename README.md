@@ -21,6 +21,7 @@ debian-trixie/
 │   ├── bash-setup.sh      # ble.sh — à lancer manuellement post-reboot
 │   ├── citrix-setup.sh    # Citrix Workspace App — à lancer manuellement
 │   ├── niri-setup.sh      # Niri WM (build Rust ~20 min) — à lancer manuellement
+│   ├── gnome-anduinos.sh  # GNOME style Windows 11/AnduinOS — post-reboot
 │   ├── refreshos-setup.sh # Setup pour RefreshOS 3 (post-Calamares)
 │   ├── edge.sh / outlook.sh / teams.sh / perplexity.sh
 │   ├── youtube.sh / textrecon.sh
@@ -180,6 +181,36 @@ distrobox enter fedora
 
 # Les apps GUI du conteneur s'intègrent au desktop hôte
 ```
+
+
+---
+
+## GNOME façon AnduinOS / Windows 11
+
+`gnome-anduinos.sh` transforme le GNOME 48 de Debian en une expérience proche d'[AnduinOS](https://www.anduinos.com/) (taskbar + menu démarrer Windows 11).
+
+⚠️ À lancer **en utilisateur** (pas sudo) depuis une **session GNOME active** — les extensions GNOME ne s'installent pas depuis un chroot.
+
+```bash
+bash /opt/debiantrixie/scripts/gnome-anduinos.sh
+# Puis : déconnexion / reconnexion pour charger les extensions
+```
+
+| Extension | Rôle | Config appliquée |
+|-----------|------|------------------|
+| **Dash to Panel** | Taskbar | En bas, hauteur 48px, icônes centrées (style Win11) |
+| **Arc Menu** | Menu démarrer | Layout "Eleven" (Windows 11), aligné à gauche |
+| **Tiling Shell** | Gestion fenêtres | Zones type FancyZones |
+| **Blur My Shell** | Transparence/flou | — |
+| **Just Perfection** | Ajustements shell | Activities masqué, horloge à droite |
+| **Emoji Copy** | Panneau emoji | — |
+
+Réglages GNOME complémentaires : boutons fenêtre min/max/close (style Windows), thème sombre, police Hack Nerd Font Mono.
+
+Les extensions sont téléchargées depuis extensions.gnome.org en ciblant GNOME 48 (via `gnome-extensions-cli`, fallback téléchargement direct). Ajustements fins ensuite via **Extension Manager** (installé automatiquement).
+
+> Si Arc Menu n'apparaît pas après relogin : vérifier que `gir1.2-gmenu-3.0` est installé (dépendance connue).
+
 
 ## Usage standalone
 
