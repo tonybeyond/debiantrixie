@@ -12,7 +12,10 @@
 #   sudo bash /opt/debiantrixie/scripts/citrix-setup.sh  (nécessite .deb)
 # =============================================================================
 
-set -euo pipefail
+# PAS de "set -e" : ce script est best-effort (logue les échecs via log_error
+# et continue). Avec set -e, le moindre apt/curl en échec tuerait tout le
+# script → exit non-zéro → le preseed late_command marque l'install en échec.
+set -uo pipefail
 
 TARGET_USER="${SUDO_USER:-deby}"
 TARGET_HOME="/home/${TARGET_USER}"
@@ -404,3 +407,8 @@ echo "║  2. bash /opt/debiantrixie/scripts/niri-setup.sh  (~20 min) ║"
 echo "║  3. bash /opt/debiantrixie/scripts/bash-setup.sh  (ble.sh)  ║"
 echo "║  3. sudo bash /opt/debiantrixie/scripts/citrix-setup.sh     ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
+
+# ── Sortie : TOUJOURS 0 ───────────────────────────────────────────────────────
+# Le late_command du preseed considère tout code != 0 comme un échec d'install.
+# Les erreurs réelles sont déjà loguées (ERROR_COUNT) et consultables dans le log.
+exit 0
