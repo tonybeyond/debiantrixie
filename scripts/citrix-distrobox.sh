@@ -27,7 +27,7 @@ log_section() { printf "\n${BOLD}── %s ──${NC}\n" "$*"; }
 [[ $EUID -ne 0 ]] || { echo "Lancer SANS sudo (en utilisateur)."; exit 1; }
 
 BOX_NAME="citrix"
-BOX_IMAGE="quay.io/toolbx-images/ubuntu-toolbox:22.04"
+BOX_IMAGE="docker.io/library/ubuntu:22.04"
 DEB_NAME=""
 
 # ── Vérifier distrobox + podman ───────────────────────────────────────────────
