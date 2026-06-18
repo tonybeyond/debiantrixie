@@ -167,6 +167,29 @@ dconf write ${JP}/activities-button false 2>/dev/null || true
 dconf write ${JP}/clock-menu-position 1 2>/dev/null || true  # horloge à droite
 log_ok "Just Perfection : Activities masqué, horloge à droite"
 
+# ── 8. Locale régionale + clavier fr_CH (niveau session GNOME) ───────────────
+# GNOME/Wayland N'UTILISE PAS /etc/default/locale ni /etc/default/keyboard pour
+# la session graphique — il lit ses propres clés dconf par utilisateur.
+# D'où : bonne langue (en_US) mais formats/clavier ignorés sans ces réglages.
+log_section "Locale régionale + clavier GNOME"
+
+# Format régional fr_CH (dates, monnaie, mesures) — interface reste en_US
+gsettings set org.gnome.system.locale region 'fr_CH.UTF-8' 2>/dev/null || true
+
+# Clavier suisse romand (ch + variante fr) pour la session GNOME
+# Format : [('xkb', 'LAYOUT+VARIANT')]
+gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'ch+fr')]" 2>/dev/null || true
+gsettings set org.gnome.desktop.input-sources xkb-options "[]" 2>/dev/null || true
+
+# Cohérence : aligner aussi le niveau système (console TTY + X11) si root dispo
+if command -v localectl &>/dev/null; then
+  sudo localectl set-x11-keymap ch pc105 fr 2>/dev/null || true
+  sudo localectl set-keymap ch-fr 2>/dev/null || true
+fi
+
+log_ok "Format régional fr_CH + clavier ch/fr appliqués (session GNOME)"
+log_warn "Relogin requis pour que le clavier GNOME prenne effet"
+
 # ── 8. Réglages GNOME globaux (cohérence Win11) ──────────────────────────────
 log_section "Réglages GNOME"
 # Boutons de titre min/max/close (comme Windows)
@@ -184,7 +207,7 @@ echo ""
 printf "${GREEN}${BOLD}╔══════════════════════════════════════════════════════╗\n"
 printf "║  GNOME façon AnduinOS — configuré ✓                  ║\n"
 printf "╠══════════════════════════════════════════════════════╣\n"
-printf "║  ⚠  RELOGIN REQUIS pour charger les extensions :     ║\n"
+printf "║  ⚠  RELOGIN REQUIS (extensions + clavier fr_CH) :    ║\n"
 printf "║     déconnexion/reconnexion (ou reboot)              ║\n"
 printf "╠══════════════════════════════════════════════════════╣\n"
 printf "║  Installé :                                          ║\n"
