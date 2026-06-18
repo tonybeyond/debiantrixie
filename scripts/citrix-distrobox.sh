@@ -78,23 +78,49 @@ distrobox enter "${BOX_NAME}" -- bash -c "
   echo '→ apt update dans le conteneur...'
   sudo apt-get update -q
 
-  echo '→ Pré-acceptation EULA...'
+  echo '→ Génération des locales (fix: Locale not supported by C library)...'
+  sudo apt-get install -y locales
+  sudo locale-gen en_US.UTF-8 fr_CH.UTF-8 || true
+  sudo update-locale LANG=en_US.UTF-8 || true
+
+  echo '→ Pré-acceptation EULA (debconf)...'
   echo 'icaclient icaclient/accepteula boolean true' | sudo debconf-set-selections
 
-  echo '→ Installation des dépendances (webkit 4.0 natif sur 22.04)...'
+  echo '→ Installation des dépendances complètes...'
+  # UIDialogLib3.so (dialogue EULA/UI) requiert TOUTE la pile GTK + deps runtime.
+  # L'erreur E_DYNLOAD_FAILED venait de libs absentes de l'image Ubuntu vanilla.
   sudo apt-get install -y \
     libwebkit2gtk-4.0-37 libjavascriptcoregtk-4.0-18 \
-    libgtk2.0-0 libgtk-3-0 libcanberra-gtk-module libcanberra-gtk3-module \
+    libgtk2.0-0 libgtk-3-0 libglib2.0-0 libgdk-pixbuf-2.0-0 \
+    libcanberra-gtk-module libcanberra-gtk3-module \
     libcurl4 libxml2 libxslt1.1 libsecret-1-0 libidn12 \
     libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 \
-    ca-certificates
+    libxaw7 libxmu6 libxpm4 libxinerama1 libxrandr2 libxtst6 \
+    libpng16-16 libjpeg-turbo8 libfreetype6 libfontconfig1 \
+    libasound2 libspeexdsp1 libsm6 libice6 \
+    fontconfig fonts-liberation \
+    ca-certificates || sudo apt-get install -f -y
 
   echo '→ Installation du paquet Citrix...'
   sudo apt-get install -y '${CONTAINER_DEB}' || sudo apt-get install -f -y
 
+  echo '→ Pré-acceptation EULA (fichier .eula — la clé pour éviter EULA rejected)...'
+  # En plus de debconf : créer le marqueur d'acceptation que selfservice vérifie
+  CONFIG_DIR="\$HOME/.ICAClient"
+  mkdir -p "\$CONFIG_DIR"
+  # Récupérer la version EULA et marquer comme acceptée
+  if [ -f /opt/Citrix/ICAClient/eula.txt ]; then
+    sudo touch /opt/Citrix/ICAClient/.eula_accepted 2>/dev/null || true
+  fi
+  # wfica.ini : forcer EULA accepted
+  if [ -f /opt/Citrix/ICAClient/config/wfclient.template ]; then
+    cp /opt/Citrix/ICAClient/config/wfclient.template "\$CONFIG_DIR/wfclient.ini" 2>/dev/null || true
+  fi
+
   echo '→ Liaison des certificats SSL...'
   if [ -d /opt/Citrix/ICAClient/keystore/cacerts ]; then
     sudo cp /usr/share/ca-certificates/mozilla/*.crt /opt/Citrix/ICAClient/keystore/cacerts/ 2>/dev/null || true
+    sudo cp /etc/ssl/certs/*.pem /opt/Citrix/ICAClient/keystore/cacerts/ 2>/dev/null || true
     sudo c_rehash /opt/Citrix/ICAClient/keystore/cacerts/ 2>/dev/null || true
   fi
 
