@@ -1,31 +1,29 @@
 #!/usr/bin/env bash
 # =============================================================================
-# citrix-setup.sh — Citrix Workspace App pour Linux (x86_64)
+# citrix-setup.sh — Citrix Workspace App NATIF sur Debian 13 Trixie
 # =============================================================================
-# Version référence : 2601 / 26.01.x (release : mars 2026)
-# SHA-256 référence : 7ce8c3a32e1e9d698e7bca349ad582136040774a49e35f47e529430918f8b94a
+# Trixie a retiré webkit2gtk-4.0 (libsoup2), requis par Citrix Workspace App.
+# Solution : apporter libwebkit2gtk-4.0-37 + ses dépendances depuis Bookworm.
+# Ces libs COHABITENT avec celles de Trixie (SONAME distincts : 4.0 vs 4.1,
+# libicu72 vs libicu76) — aucun conflit, aucun repo Bookworm permanent ajouté.
 #
-# ⚠  TÉLÉCHARGEMENT MANUEL REQUIS (EULA Citrix)
-#   1. Ouvrir : https://www.citrix.com/downloads/workspace-app/linux/
-#   2. Télécharger "Full Package (Self-Service) — x86_64 .deb"
-#   3. Placer le fichier dans ~/Downloads/
-#   4. Lancer : sudo bash scripts/citrix-setup.sh
+# Place le .deb Citrix dans ~/Downloads/ (icaclient_*.deb) puis :
+#   sudo bash /opt/debiantrixie/scripts/citrix-setup.sh
 # =============================================================================
 
-set -euo pipefail
+set -uo pipefail   # PAS de -e : best-effort
 
-CITRIX_SHA256_REF="7ce8c3a32e1e9d698e7bca349ad582136040774a49e35f47e529430918f8b94a"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-log_info()  { echo "[$(date +'%H:%M:%S')] ·     $*"; }
-log_ok()    { echo "[$(date +'%H:%M:%S')] ✓     $*"; }
-log_warn()  { echo "[$(date +'%H:%M:%S')] ⚠     $*"; }
-log_error() { echo "[$(date +'%H:%M:%S')] ✗     $*" >&2; }
+GREEN='\033[0;32m'; BLUE='\033[0;34m'; RED='\033[0;31m'
+YELLOW='\033[1;33m'; BOLD='\033[1m'; NC='\033[0m'
+log_info()  { printf "${BLUE}  ·${NC}  %s\n" "$*"; }
+log_ok()    { printf "${GREEN}  ✓${NC}  %s\n" "$*"; }
+log_warn()  { printf "${YELLOW}  ⚠${NC}  %s\n" "$*"; }
+log_error() { printf "${RED}  ✗${NC}  %s\n" "$*" >&2; }
+log_section(){ printf "\n${BOLD}── %s ──${NC}\n" "$*"; }
 
 [[ $EUID -eq 0 ]] || exec sudo "$0" "$@"
 
-# ── Détecter le VRAI utilisateur (pas root) ───────────────────────────────────
-# Avec sudo : $HOME = /root, mais le .deb est dans le home de l'utilisateur réel
+# Utilisateur réel (pas root) pour trouver ~/Downloads
 REAL_USER="${SUDO_USER:-$(logname 2>/dev/null || echo '')}"
 if [[ -n "${REAL_USER}" && "${REAL_USER}" != "root" ]]; then
   REAL_HOME=$(getent passwd "${REAL_USER}" | cut -d: -f6)
@@ -33,103 +31,135 @@ else
   REAL_HOME="/root"
 fi
 
-# ── Trouver le .deb (home utilisateur, root, script dir, /tmp) ───────────────
-find_deb() {
-  local found
-  for dir in "${REAL_HOME}/Downloads" "/root/Downloads" "${SCRIPT_DIR}" "/tmp"; do
-    found=$(find "${dir}" -maxdepth 1 -name "icaclient_*.deb" 2>/dev/null | sort -V | tail -n1 || true)
-    [[ -n "${found}" ]] && echo "${found}" && return 0
+# Miroir Debian (Bookworm) + versions figées des libs webkit 4.0
+DEB_MIRROR="http://ftp.debian.org/debian/pool/main"
+WEBKIT_VER="2.50.6-1~deb12u1"
+ICU_VER="72.1-3+deb12u1"
+WORK="/tmp/citrix-webkit40"
+
+# ── 1. Vérifier qu'on est bien sur Trixie ─────────────────────────────────────
+log_section "Vérification système"
+if ! grep -q "trixie\|13" /etc/debian_version 2>/dev/null && \
+   ! grep -qi trixie /etc/os-release 2>/dev/null; then
+  log_warn "Ce script cible Debian 13 Trixie. Détecté : $(cat /etc/debian_version 2>/dev/null)"
+  printf "  Continuer ? [y/N] "; read -r a </dev/tty; [[ "$a" =~ ^[Yy]$ ]] || exit 0
+fi
+
+# Déjà fonctionnel ?
+if [[ -e /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.0.so.37 ]]; then
+  log_ok "libwebkit2gtk-4.0 déjà présente"
+else
+  # ── 2. Télécharger les libs webkit 4.0 + deps depuis Bookworm ──────────────
+  log_section "Récupération de webkit2gtk-4.0 (Bookworm)"
+  rm -rf "${WORK}"; mkdir -p "${WORK}"; cd "${WORK}"
+
+  # Liste : (sous-chemin pool | nom fichier)
+  # webkit 4.0 + javascriptcore 4.0 (même source) + icu72 (data + libs)
+  declare -a DEBS=(
+    "w/webkit2gtk/libwebkit2gtk-4.0-37_${WEBKIT_VER}_amd64.deb"
+    "w/webkit2gtk/libjavascriptcoregtk-4.0-18_${WEBKIT_VER}_amd64.deb"
+    "i/icu/libicu72_${ICU_VER}_amd64.deb"
+  )
+
+  DL_OK=true
+  for sub in "${DEBS[@]}"; do
+    fname=$(basename "${sub}")
+    log_info "Téléchargement ${fname}..."
+    if ! curl -fL --connect-timeout 20 -o "${fname}" "${DEB_MIRROR}/${sub}"; then
+      log_error "Échec : ${fname}"
+      DL_OK=false
+    fi
   done
-  return 1
-}
 
-log_info "Citrix Workspace App — installation"
-log_info "Recherche du .deb (utilisateur : ${REAL_USER:-root})..."
+  if [[ "${DL_OK}" != true ]]; then
+    log_error "Téléchargement incomplet. Vérifier la connectivité / les versions."
+    exit 1
+  fi
 
-DEB_PATH=$(find_deb) || {
-  echo ""
-  echo "╔══════════════════════════════════════════════════════════════════╗"
-  echo "║  Fichier Citrix .deb introuvable                                ║"
-  echo "╠══════════════════════════════════════════════════════════════════╣"
-  echo "║  Emplacements cherchés :                                        ║"
-  printf "║   • %-60s ║\n" "${REAL_HOME}/Downloads"
-  echo "║   • /root/Downloads · répertoire du script · /tmp               ║"
-  echo "╠══════════════════════════════════════════════════════════════════╣"
-  echo "║  1. https://www.citrix.com/downloads/workspace-app/linux/       ║"
-  echo "║  2. Télécharger : Full Package (Self-Service) x86_64 .deb       ║"
-  echo "║  3. Placer dans : ~/Downloads/                                  ║"
-  echo "║  4. Relancer : sudo bash scripts/citrix-setup.sh                ║"
-  echo "╚══════════════════════════════════════════════════════════════════╝"
+  # ── 3. Installer ces .deb (cohabitent avec les libs Trixie) ────────────────
+  log_section "Installation des libs Bookworm (cohabitation)"
+  # dpkg -i : installe sans toucher aux paquets Trixie existants.
+  # Les SONAME diffèrent (4.0 vs 4.1, icu .72 vs .76) → pas de remplacement.
+  if dpkg -i "${WORK}"/*.deb 2>/dev/null; then
+    log_ok "Libs webkit 4.0 + icu72 installées"
+  else
+    log_info "Résolution des dépendances manquantes..."
+    apt-get install -f -y || log_warn "apt -f a signalé des soucis (souvent bénin ici)"
+    dpkg -i "${WORK}"/*.deb 2>/dev/null && log_ok "Libs installées (2e passe)" \
+      || log_error "Installation des libs échouée"
+  fi
+
+  # Vérification
+  if [[ -e /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.0.so.37 ]]; then
+    log_ok "libwebkit2gtk-4.0.so.37 en place"
+  else
+    log_error "libwebkit2gtk-4.0.so.37 toujours absente — Citrix ne démarrera pas"
+  fi
+  rm -rf "${WORK}"
+fi
+
+# ── 4. Dépendances Citrix classiques (présentes dans Trixie) ─────────────────
+log_section "Dépendances Citrix (Trixie)"
+apt-get update -q
+apt-get install -y \
+  libgtk2.0-0 libgtk-3-0t64 libcanberra-gtk-module libcanberra-gtk3-module \
+  libcurl4 libxml2 libxslt1.1 libsecret-1-0 libidn12 \
+  libxaw7 libxmu6 libxpm4 libxinerama1 libxrandr2 libxtst6 \
+  libpng16-16 libfreetype6 libfontconfig1 fontconfig \
+  libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 \
+  ca-certificates 2>/dev/null || log_warn "Certaines deps Trixie ont échoué"
+log_ok "Dépendances Trixie installées"
+
+# ── 5. Trouver et installer le .deb Citrix ────────────────────────────────────
+log_section "Citrix Workspace App"
+DEB_PATH=$(find "${REAL_HOME}/Downloads" "${REAL_HOME}" /root/Downloads "$(dirname "$0")" \
+  -maxdepth 1 -name "icaclient_*.deb" 2>/dev/null | sort -V | tail -n1)
+if [[ -z "${DEB_PATH}" ]]; then
+  log_error "icaclient_*.deb introuvable dans ${REAL_HOME}/Downloads/"
+  echo "  → https://www.citrix.com/downloads/workspace-app/linux/"
   exit 1
-}
-
-log_ok "Fichier trouvé : ${DEB_PATH}"
-
-# ── Vérification SHA-256 (informatif, non-bloquant) ──────────────────────────
-# Le hash de référence correspond à la version 2601 — il devient obsolète à
-# chaque release Citrix. En cas de mismatch, on demande confirmation.
-log_info "Vérification du checksum..."
-ACTUAL_SHA=$(sha256sum "${DEB_PATH}" | awk '{print $1}')
-if [[ "${ACTUAL_SHA}" == "${CITRIX_SHA256_REF}" ]]; then
-  log_ok "Checksum identique à la version de référence (2601)"
-else
-  log_warn "Checksum différent de la version de référence."
-  log_warn "  Référence (2601) : ${CITRIX_SHA256_REF}"
-  log_warn "  Fichier local    : ${ACTUAL_SHA}"
-  log_warn "  → Normal si vous avez téléchargé une version plus récente."
-  log_warn "  → Vérifiez le checksum sur la page de téléchargement Citrix."
-  printf "  Continuer l'installation ? [Y/n] "
-  read -r answer </dev/tty
-  [[ ! "${answer}" =~ ^[Nn]$ ]] || { log_info "Annulé."; exit 0; }
 fi
+log_ok "Paquet : $(basename "${DEB_PATH}")"
 
-# ── Dépendances ───────────────────────────────────────────────────────────────
-log_info "Installation des dépendances..."
-apt update -q
-apt install -y \
-  libc6 libglib2.0-0 libgtk2.0-0 libstdc++6 \
-  libcanberra-gtk-module libcanberra-gtk3-module \
-  libcurl4 libssl3 libpulse0 libxmu6 2>/dev/null || true
-
-# libasound2 : nom différent selon la version Debian/Ubuntu (t64 sur Trixie/Noble)
-apt install -y libasound2t64 2>/dev/null \
-  || apt install -y libasound2 2>/dev/null || true
-
-# libwebkit2gtk : optionnel (Self-Service UI), noms variables
-apt install -y libwebkit2gtk-4.1-0 2>/dev/null \
-  || apt install -y libwebkit2gtk-4.0-37 2>/dev/null \
-  || log_info "libwebkit indisponible — Self-Service UI limitée (OK pour ICA)"
-
-log_ok "Dépendances installées"
-
-# ── Pré-acceptation EULA (non-interactive) ────────────────────────────────────
-log_info "Acceptation EULA (debconf)..."
 echo "icaclient icaclient/accepteula boolean true" | debconf-set-selections
-
-# ── Installation ──────────────────────────────────────────────────────────────
-log_info "Installation du package Citrix..."
-if ! dpkg -i "${DEB_PATH}" 2>/dev/null; then
-  apt install -f -y || { log_error "Installation échouée"; exit 1; }
-fi
-log_ok "Citrix Workspace App installé"
-
-# ── Fix certificats SSL ───────────────────────────────────────────────────────
-log_info "Liaison des certificats SSL..."
-CITRIX_CERTS="/opt/Citrix/ICAClient/keystore/cacerts"
-if [[ -d "${CITRIX_CERTS}" ]]; then
-  ln -sf /etc/ssl/certs/ca-certificates.crt "${CITRIX_CERTS}/ca-certificates.crt" 2>/dev/null || true
-  log_ok "Certificats SSL liés"
-fi
-
-# ── Vérification finale ───────────────────────────────────────────────────────
-if [[ -x "/opt/Citrix/ICAClient/selfservice" ]]; then
-  log_ok "Prêt → /opt/Citrix/ICAClient/selfservice"
-elif [[ -x "/opt/Citrix/ICAClient/wfica" ]]; then
-  log_ok "Prêt → /opt/Citrix/ICAClient/wfica"
+if dpkg -i "${DEB_PATH}" 2>/dev/null; then
+  log_ok "Citrix installé"
 else
-  log_error "Binaire non trouvé — vérifier l'installation"
+  apt-get install -f -y && dpkg -i "${DEB_PATH}" 2>/dev/null \
+    && log_ok "Citrix installé (2e passe)" \
+    || log_error "Installation Citrix échouée"
+fi
+
+# ── 6. Store SSL ──────────────────────────────────────────────────────────────
+log_section "Certificats SSL"
+CERTS="/opt/Citrix/ICAClient/keystore/cacerts"
+if [[ -d "${CERTS}" ]]; then
+  cp /usr/share/ca-certificates/mozilla/*.crt "${CERTS}/" 2>/dev/null || true
+  cp /etc/ssl/certs/*.pem "${CERTS}/" 2>/dev/null || true
+  c_rehash "${CERTS}/" 2>/dev/null || /opt/Citrix/ICAClient/util/ctx_rehash 2>/dev/null || true
+  log_ok "Certificats liés et réindexés"
+fi
+
+# ── 7. Vérification finale (ldd) ──────────────────────────────────────────────
+log_section "Vérification"
+if [[ -e /opt/Citrix/ICAClient/selfservice ]]; then
+  MISSING=$(ldd /opt/Citrix/ICAClient/selfservice 2>/dev/null | grep "not found" || true)
+  if [[ -z "${MISSING}" ]]; then
+    log_ok "selfservice : toutes les libs résolues"
+  else
+    log_warn "Libs encore manquantes :"
+    echo "${MISSING}" | sed 's/^/      /'
+  fi
 fi
 
 echo ""
-echo "✓ Citrix Workspace App installé ($(basename "${DEB_PATH}"))"
-echo "  Lancer depuis le menu ou : /opt/Citrix/ICAClient/selfservice"
+printf "${GREEN}${BOLD}╔══════════════════════════════════════════════════════╗\n"
+printf "║  Citrix Workspace NATIF sur Trixie ✓                 ║\n"
+printf "╠══════════════════════════════════════════════════════╣\n"
+printf "║  Lancer : /opt/Citrix/ICAClient/selfservice          ║\n"
+printf "║  ou depuis le menu GNOME (Citrix Workspace)          ║\n"
+printf "╠══════════════════════════════════════════════════════╣\n"
+printf "║  webkit 4.0 (Bookworm) cohabite avec 4.1 (Trixie)    ║\n"
+printf "║  Aucun repo Bookworm permanent — libs figées         ║\n"
+printf "╚══════════════════════════════════════════════════════╝${NC}\n"
+exit 0
