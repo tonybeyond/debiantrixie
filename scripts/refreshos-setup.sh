@@ -184,25 +184,35 @@ else
   log_ok "Proton Mail déjà présent"
 fi
 
-# ── 11. Ghostty ───────────────────────────────────────────────────────────────
-log_section "Ghostty"
-if ! command -v ghostty &>/dev/null; then
-  # RefreshOS = sans Flatpak par design → apt puis mkasberg uniquement
-  if apt install -y ghostty 2>/dev/null; then
-    log_ok "Ghostty installé depuis apt"
-  elif /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/mkasberg/ghostty-ubuntu/HEAD/install.sh)" 2>>"${LOG_FILE}"; then
-    log_ok "Ghostty installé via mkasberg"
+# ── WaveTerm (terminal AI-intégré, remplace Ghostty) ─────────────────────────
+log_section "WaveTerm"
+if ! command -v waveterm &>/dev/null; then
+  log_info "Récupération de la dernière version WaveTerm..."
+  WAVETERM_VER=$(curl -s https://api.github.com/repos/wavetermdev/waveterm/releases/latest \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'].lstrip('v'))" 2>/dev/null \
+    || echo "0.14.5")
+  WAVETERM_DEB="/tmp/waveterm-${WAVETERM_VER}.deb"
+  WAVETERM_URL="https://github.com/wavetermdev/waveterm/releases/download/v${WAVETERM_VER}/waveterm-linux-amd64-${WAVETERM_VER}.deb"
+  log_info "Téléchargement WaveTerm v${WAVETERM_VER} (~153 Mo)..."
+  if curl -fL --connect-timeout 30 -o "${WAVETERM_DEB}" "${WAVETERM_URL}" 2>>"${LOG_FILE}"; then
+    apt install -y "${WAVETERM_DEB}" 2>>"${LOG_FILE}" \
+      && log_ok "WaveTerm v${WAVETERM_VER} installé" \
+      || log_error "WaveTerm dpkg échoué"
+    rm -f "${WAVETERM_DEB}"
   else
-    log_error "Ghostty indisponible — Konsole reste le terminal par défaut"
+    log_error "WaveTerm download échoué — installer depuis https://www.waveterm.dev/download"
   fi
 else
-  log_ok "Ghostty déjà présent"
+  log_ok "WaveTerm déjà présent ($(waveterm --version 2>/dev/null || echo 'version inconnue'))"
 fi
-mkdir -p "${TARGET_HOME}/.config/ghostty"
-if [[ -f "${REPO_DIR}/configs/ghostty/config" ]]; then
-  cp "${REPO_DIR}/configs/ghostty/config" "${TARGET_HOME}/.config/ghostty/config"
-  chown -R "${TARGET_USER}:${TARGET_USER}" "${TARGET_HOME}/.config/ghostty"
-  log_ok "Config Ghostty déployée"
+
+# Déployer les configs WaveTerm (Ollama + settings + connexion SSH homelab)
+WAVETERM_CONF="${TARGET_HOME}/.config/waveterm"
+if [[ -d "${REPO_DIR}/configs/waveterm" ]]; then
+  mkdir -p "${WAVETERM_CONF}"
+  cp "${REPO_DIR}/configs/waveterm/"*.json "${WAVETERM_CONF}/" 2>/dev/null || true
+  chown -R "${TARGET_USER}:${TARGET_USER}" "${WAVETERM_CONF}"
+  log_ok "Config WaveTerm déployée (Ollama 10.11.12.122, theme Dracula, SSH homelab)"
 fi
 
 # ── 12. Neovim (depuis source) ────────────────────────────────────────────────
